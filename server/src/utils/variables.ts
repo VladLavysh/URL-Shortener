@@ -13,7 +13,7 @@ export const swaggerOptions: Options = {
     },
     servers: [
       {
-        url: `http://localhost:${process.env.PORT || 3300}`,
+        url: process.env.HOST,
         description: 'Development server',
       },
     ],
@@ -62,8 +62,14 @@ export const swaggerOptions: Options = {
     },
   },
   apis: [
-    './src/routes/*.ts',      // Route files
-    './src/models/*.ts',      // Model files
+    './src/routes/*.ts', // Route files
+    './src/models/*.ts', // Model files
     './src/controllers/*.ts', // Controller files
   ],
+};
+
+export const corsOptions = {
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
 };

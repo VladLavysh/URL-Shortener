@@ -8,12 +8,12 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(uuid())
-  name         String        @unique
+  id           String         @id @default(uuid())
+  name         String         @unique
   password     String
   urls         Url[]
-  refreshToken RefreshToken?
-  createdAt    DateTime      @default(now())
+  refreshToken RefreshToken[]
+  createdAt    DateTime       @default(now())
 }
 
 model Url {
@@ -29,7 +29,7 @@ model Url {
 model RefreshToken {
   id        String   @id @default(uuid())
   token     String   @unique
-  userId    String   @unique
+  userId    String
   user      User     @relation(fields: [userId], references: [id])
   expiredAt DateTime @default(now())
   createdAt DateTime @default(now())

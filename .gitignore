@@ -18,7 +18,7 @@ client/dist/
 server/dist/
 
 # Environment files
-.env
+.env*
 
 # IDE files
 .vscode/

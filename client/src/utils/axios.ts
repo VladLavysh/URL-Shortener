@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { useUserStore } from '../stores/user';
 
-const baseURL = `http://localhost:${import.meta.env.VITE_SERVER_PORT}`;
+const baseURL = import.meta.env.VITE_SERVER_URL;
 
 const axiosInstance = axios.create({
   baseURL,

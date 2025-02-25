@@ -29,9 +29,11 @@ export const useUserStore = defineStore('user', () => {
         },
       });
       updateUserData(data);
-    } catch (error) {
+      return data;
+    } catch (error: any) {
       console.error('Error fetching user:', error);
       clearUserData();
+      return error;
     }
   }
 

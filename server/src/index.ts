@@ -2,38 +2,31 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
+import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsDoc from 'swagger-jsdoc';
-import { swaggerOptions } from './utils/variables';
+import { swaggerOptions, corsOptions } from './utils/variables';
 import 'express-async-errors';
 
 import { generalLimiter, authLimiter } from './utils/rateLimiters';
 import authRouter from './routes/auth';
 import urlRouter from './routes/url';
 
-dotenv.config();
+dotenv.config({
+  path: process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development',
+});
 
 const app = express();
-const PORT = process.env.PORT || 3300;
+const PORT = process.env.PORT || 3100;
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
-
-// CORS configuration
-const corsOptions = {
-  origin:
-    process.env.NODE_ENV === 'production'
-      ? 'https://production-domain.com' // TODO: replace with a prod domain
-      : 'http://localhost:5173',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-};
 
 // Middlewares
 app.use(express.json());
 app.use(cookieParser());
 app.use(helmet());
-app.use(cors(corsOptions));
+app.use(morgan('dev'));
+app.use(cors({ ...corsOptions, origin: process.env.CLIENT_HOST }));
 
 // Rate Limiting
 app.use('/url', generalLimiter);
@@ -47,7 +40,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 const startServer = async () => {
   try {
     app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+      console.log(`Server is running on port ${PORT} - ${process.env.NODE_ENV}`);
     });
   } catch (e) {
     console.log(e);

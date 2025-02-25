@@ -23,10 +23,14 @@ const router = createRouter({
 
 router.beforeEach(async (to, _, next) => {
   const userStore = useUserStore();
-  const token = userStore.accessToken;
 
-  if (token) {
-    if (!userStore.userId) await userStore.fetchUser();
+  if (userStore.accessToken) {
+    if (!userStore.userId) {
+      const response = await userStore.fetchUser();
+      if (!response.user) {
+        next('/auth');
+      }
+    }
     next();
   } else {
     if (to.meta.requiresAuth) next('/auth');

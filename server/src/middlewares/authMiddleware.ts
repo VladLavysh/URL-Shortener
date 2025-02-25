@@ -1,8 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-const ACCESS_SECRET = process.env.ACCESS_SECRET || 'secret_key';
-
 interface AuthRequest extends Request {
   user?: unknown;
 }
@@ -13,7 +11,7 @@ export const verifyAuthToken = (req: AuthRequest, res: Response, next: NextFunct
 
   if (!token) return res.status(401).json({ message: 'Unauthorized: No token provided' });
 
-  jwt.verify(token, ACCESS_SECRET, (err, user) => {
+  jwt.verify(token, process.env.ACCESS_SECRET!, (err, user) => {
     if (err) return res.status(403).json({ message: 'Forbidden: Invalid token' });
 
     req.user = user;

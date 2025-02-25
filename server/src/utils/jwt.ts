@@ -3,9 +3,6 @@ import { PrismaClient, User } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const ACCESS_SECRET = process.env.ACCESS_SECRET!;
-const REFRESH_SECRET = process.env.REFRESH_SECRET!;
-
 interface TokenPayload {
   id: string;
   name: string;
@@ -17,11 +14,11 @@ interface RefreshTokenResult {
 }
 
 export const generateAccessToken = (id: string, name: string) => {
-  return jwt.sign({ id, name }, ACCESS_SECRET, { expiresIn: '15m' });
+  return jwt.sign({ id, name }, process.env.ACCESS_SECRET!, { expiresIn: '15m' });
 };
 
 export const generateRefreshToken = (id: string, name: string) => {
-  return jwt.sign({ id, name }, REFRESH_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ id, name }, process.env.REFRESH_SECRET!, { expiresIn: '7d' });
 };
 
 export const verifyToken = async (
@@ -29,7 +26,7 @@ export const verifyToken = async (
   type: 'access' | 'refresh'
 ): Promise<TokenPayload | RefreshTokenResult | null> => {
   try {
-    const secret = type === 'access' ? ACCESS_SECRET : REFRESH_SECRET;
+    const secret = type === 'access' ? process.env.ACCESS_SECRET! : process.env.REFRESH_SECRET!;
 
     if (type === 'access') {
       return jwt.verify(token, secret) as TokenPayload;
