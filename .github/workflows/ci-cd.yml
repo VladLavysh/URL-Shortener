@@ -133,7 +133,7 @@ jobs:
           path: ./server/dist
           retention-days: 7
 
-  deploy:
+  db-migrate:
     needs: [build-client, build-server]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -141,51 +141,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download client build
-        uses: actions/download-artifact@v4
-        with:
-          name: client-build
-          path: ./client/dist
-
-      - name: Download server build
-        uses: actions/download-artifact@v4
-        with:
-          name: server-build
-          path: ./server/dist
-
-      # Deploy client to Vercel
-      - name: Install Vercel CLI
-        run: npm install -g vercel
-
-      - name: Deploy client to Vercel
-        run: |
-          cd ./client
-          vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }}
-
-      # Deploy server to Render
-      - name: Deploy server to Render
-        run: |
-          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-
       # Database migration step for production
       - name: Set up Node.js for database migration
-        if: success()
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Update package-lock.json for migration
-        if: success()
-        run: npm install --package-lock-only
-        working-directory: ./server
+          cache: 'npm'
+          cache-dependency-path: './server/package-lock.json'
 
       - name: Install server dependencies for migration
-        if: success()
         run: npm install
         working-directory: ./server
 
       - name: Run database migrations
-        if: success()
         run: npm run migrate
         working-directory: ./server
         env:
