@@ -1,0 +1,169 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: ['main']
+  pull_request:
+    branches: ['main']
+
+jobs:
+  lint-and-test-client:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./client
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './client/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check code formatting
+        run: npm run format:check
+
+      - name: Run tests
+        run: npm test
+
+  build-client:
+    needs: lint-and-test-client
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./client
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './client/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build client
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-build
+          path: ./client/dist
+          retention-days: 7
+
+  lint-and-test-server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './server/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check code formatting
+        run: npm run format:check
+
+      - name: Run tests
+        run: npm test
+        env:
+          DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/test_db?schema=public'
+          JWT_SECRET: 'test-jwt-secret'
+          NODE_ENV: 'test'
+
+  build-server:
+    needs: lint-and-test-server
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './server/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build server
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-build
+          path: ./server/dist
+          retention-days: 7
+
+  deploy:
+    needs: [build-client, build-server]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download client build
+        uses: actions/download-artifact@v4
+        with:
+          name: client-build
+          path: ./client/dist
+
+      - name: Download server build
+        uses: actions/download-artifact@v4
+        with:
+          name: server-build
+          path: ./server/dist
+
+      # Example deployment step - this would be customized based on your deployment strategy
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production..."
+          # Add your deployment commands here
+          # For example, you might use SSH to deploy to a server, or a service like Heroku, Vercel, etc.
+
+      # Database migration step for production
+      - name: Set up Node.js for database migration
+        if: success()
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install server dependencies for migration
+        if: success()
+        run: npm ci
+        working-directory: ./server
+
+      - name: Run database migrations
+        if: success()
+        run: npm run migrate
+        working-directory: ./server
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NODE_ENV: 'production'

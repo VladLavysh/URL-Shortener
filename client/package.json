@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc -b && vite build",
+    "build": "vue-tsc && vite build",
     "preview": "vite preview",
+    "test": "vitest",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,scss,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,scss,md}\""
   },
@@ -25,10 +26,13 @@
   "devDependencies": {
     "@types/node": "^22.13.5",
     "@vitejs/plugin-vue": "^5.2.1",
+    "@vitest/ui": "^3.0.7",
     "@vue/tsconfig": "^0.7.0",
+    "msw": "^2.7.3",
     "prettier": "^3.5.2",
     "typescript": "~5.7.2",
     "vite": "^6.1.0",
+    "vitest": "^3.0.7",
     "vue-tsc": "^2.2.0"
   }
 }
