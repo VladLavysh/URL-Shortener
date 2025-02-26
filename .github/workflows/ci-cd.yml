@@ -23,8 +23,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: './client/package-lock.json'
 
+      - name: Update package-lock.json
+        run: npm install --package-lock-only
+
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Check code formatting
         run: npm run format:check
@@ -49,8 +52,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: './client/package-lock.json'
 
+      - name: Update package-lock.json
+        run: npm install --package-lock-only
+
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build client
         run: npm run build
@@ -78,8 +84,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: './server/package-lock.json'
 
+      - name: Update package-lock.json
+        run: npm install --package-lock-only
+
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Check code formatting
         run: npm run format:check
@@ -108,8 +117,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: './server/package-lock.json'
 
+      - name: Update package-lock.json
+        run: npm install --package-lock-only
+
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build server
         run: npm run build
@@ -155,9 +167,14 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Update package-lock.json for migration
+        if: success()
+        run: npm install --package-lock-only
+        working-directory: ./server
+
       - name: Install server dependencies for migration
         if: success()
-        run: npm ci
+        run: npm install
         working-directory: ./server
 
       - name: Run database migrations
