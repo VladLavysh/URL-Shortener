@@ -153,12 +153,19 @@ jobs:
           name: server-build
           path: ./server/dist
 
-      # Example deployment step - this would be customized based on your deployment strategy
-      - name: Deploy to production
+      # Deploy client to Vercel
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+
+      - name: Deploy client to Vercel
         run: |
-          echo "Deploying to production..."
-          # Add your deployment commands here
-          # For example, you might use SSH to deploy to a server, or a service like Heroku, Vercel, etc.
+          cd ./client
+          vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }}
+
+      # Deploy server to Render
+      - name: Deploy server to Render
+        run: |
+          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
 
       # Database migration step for production
       - name: Set up Node.js for database migration
