@@ -17,13 +17,13 @@ model User {
 }
 
 model Url {
-  id          String   @id @default(uuid())
+  id          Int      @id @default(autoincrement())
   originalUrl String
-  shortUrl    String   @unique
   clicks      Int      @default(0)
   userId      String
   user        User     @relation(fields: [userId], references: [id])
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model RefreshToken {

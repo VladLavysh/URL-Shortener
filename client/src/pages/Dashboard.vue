@@ -1,36 +1,25 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useUserStore } from '../stores/user';
+import { useUrlStore } from '../stores/url';
 
 const userStore = useUserStore();
+const urlStore = useUrlStore();
 const toast = useToast();
 const router = useRouter();
 
-interface UrlItem {
-  id: string;
-  originalUrl: string;
-  shortUrl: string;
-  createdAt: string;
-  clicks: number;
-}
-
 const longUrl = ref('');
-const urls = ref<UrlItem[]>([
-  {
-    id: '1',
-    originalUrl: 'https://example.com/very/long/url/that/needs/to/be/shortened',
-    shortUrl: 'http://short.url/abc123',
-    createdAt: '2024-02-24',
-    clicks: 42,
-  },
-]);
 
 const createShortUrl = async () => {
-  console.log('CREATE SHORT');
-  toast.success('Created short URL');
-  longUrl.value = '';
+  if (!longUrl.value.trim()) return;
+  try {
+    await urlStore.createShortUrl(longUrl.value, userStore.userId);
+    longUrl.value = '';
+  } catch (error) {
+    console.error('Error creating short URL:', error);
+  }
 };
 
 const copyToClipboard = (url: string) => {
@@ -39,8 +28,15 @@ const copyToClipboard = (url: string) => {
 };
 
 const deleteUrl = async (id: string) => {
-  console.log('DELETE', id);
-  toast.success('Deleted URL');
+  try {
+    await urlStore.deleteUrl(id);
+  } catch (error) {
+    console.error('Error deleting URL:', error);
+  }
+};
+
+const loadMoreUrls = async () => {
+  await urlStore.loadMoreUrls(userStore.userId);
 };
 
 const signOut = async () => {
@@ -53,6 +49,10 @@ const signOut = async () => {
     toast.error('Failed to sign out');
   }
 };
+
+onMounted(() => {
+  urlStore.getAllUrls(userStore.userId);
+});
 </script>
 
 <template>
@@ -94,11 +94,16 @@ const signOut = async () => {
       :enter="{ opacity: 1, y: 0 }"
       :transition="{ duration: 300, delay: 100 }"
     >
-      <h2 class="text-xl font-semibold mb-4">Your URLs</h2>
+      <h2 class="text-xl font-semibold mb-4">
+        Your URLs <span class="text-sm text-gray-400">({{ urlStore.totalUrls }} total)</span>
+      </h2>
 
       <div class="space-y-4">
+        <h2 v-if="urlStore.urls.length === 0" class="text-xl font-semibold text-center text-gray-400">
+          No URLs found
+        </h2>
         <div
-          v-for="url in urls"
+          v-for="url in urlStore.urls"
           :key="url.id"
           class="bg-gray-800 rounded-lg p-4"
           v-motion
@@ -106,57 +111,93 @@ const signOut = async () => {
           :enter="{ opacity: 1, x: 0 }"
           :transition="{ duration: 300 }"
         >
-          <div class="flex items-start justify-between gap-4">
-            <div class="flex-1 flex flex-col gap-1 min-w-0">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
-                <a
-                  :href="url.originalUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="text-sm text-gray-400 truncate hover:text-gray-300"
-                  >{{ url.originalUrl }}</a
-                >
-                <button
-                  @click="copyToClipboard(url.originalUrl)"
-                  class="!px-2 !py-1 ml-1 !text-xs text-gray-400 hover:text-gray-300"
-                >
-                  copy
-                </button>
+                <h3 class="font-medium truncate">{{ url.originalUrl }}</h3>
+                <span class="text-xs text-gray-400 whitespace-nowrap">{{ url.createdAt }}</span>
               </div>
-
-              <div class="flex items-center gap-2">
-                <a
-                  :href="url.shortUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="text-indigo-400 font-medium truncate hover:text-indigo-300"
-                  >{{ url.shortUrl }}</a
-                >
+              <div class="flex items-center gap-2 mt-1">
+                <a class="text-blue-400 truncate" :href="url.shortUrl" target="_blank">{{ url.shortUrl }}</a>
                 <button
                   @click="copyToClipboard(url.shortUrl)"
-                  class="!px-2 !py-1 ml-1 !text-xs text-gray-400 hover:text-gray-300"
+                  class="text-gray-400 hover:text-white transition-colors !px-2 !py-1 ml-1"
                 >
-                  copy
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+                    />
+                  </svg>
                 </button>
               </div>
             </div>
-
             <div class="flex items-center gap-4">
-              <div>
-                <div class="flex items-center justify-end gap-2">
-                  <p class="text-sm text-gray-400">Clicks:</p>
-                  <p>{{ url.clicks }}</p>
-                </div>
-                <div class="flex items-center justify-end gap-2">
-                  <p class="text-sm text-gray-400">Created:</p>
-                  <p>{{ url.createdAt }}</p>
-                </div>
+              <div class="flex items-center gap-1 text-gray-400">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                  />
+                </svg>
+                <span>{{ url.clicks }}</span>
               </div>
-              <button @click="deleteUrl(url.id)" class="!px-3 !py-2 !text-lg text-red-400 hover:text-red-300">
-                🗑️
+              <button @click="deleteUrl(url.id)" class="text-red-400 hover:text-red-300 transition-colors">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
               </button>
             </div>
           </div>
+        </div>
+
+        <!-- Load More Button -->
+        <div v-if="urlStore.hasMoreUrls" class="flex justify-center mt-6">
+          <button @click="loadMoreUrls" class="btn btn-secondary px-6" :disabled="urlStore.isLoading">
+            <span v-if="urlStore.isLoading">Loading...</span>
+            <span v-else>Load More</span>
+          </button>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div v-if="urlStore.isLoading && !urlStore.urls.length" class="text-center py-8">
+          <div
+            class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"
+          ></div>
+          <p class="mt-2 text-gray-400">Loading URLs...</p>
         </div>
       </div>
     </div>
