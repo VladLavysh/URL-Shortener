@@ -8,7 +8,7 @@ const updateOnlineStatus = () => {
   isOnline.value = navigator.onLine;
   showStatus.value = true;
 
-  // Hide the status after 3 seconds
+  // Hide the status after 3seconds
   setTimeout(() => {
     showStatus.value = false;
   }, 3000);
