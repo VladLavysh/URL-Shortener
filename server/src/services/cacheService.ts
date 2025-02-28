@@ -23,7 +23,7 @@ export const cacheService = {
   flush: (): void => {
     cache.flushAll();
   },
-  
+
   keys: (): string[] => {
     return cache.keys();
   },
