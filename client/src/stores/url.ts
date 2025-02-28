@@ -218,14 +218,6 @@ export const useUrlStore = defineStore('url', () => {
       if ('serviceWorker' in navigator && 'SyncManager' in window) {
         const registration = await navigator.serviceWorker.ready;
         await registration.sync.register('sync-new-urls');
-
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        const remainingOfflineUrls = await getOfflineUrls();
-
-        if (remainingOfflineUrls.length > 0) {
-          await manualSyncOfflineUrls(remainingOfflineUrls);
-        }
       } else {
         await manualSyncOfflineUrls(offlineData);
       }
@@ -237,27 +229,36 @@ export const useUrlStore = defineStore('url', () => {
 
   const manualSyncOfflineUrls = async (offlineUrls: UrlItem[]) => {
     let syncedCount = 0;
+    const failedUrls: string[] = [];
 
     for (const url of offlineUrls) {
       try {
-        await axios.post('/url', {
+        const response = await axios.post('/url', {
           originalUrl: url.originalUrl,
           userId: url.userId,
         });
 
-        const db = await openIndexedDB();
-        const transaction = db.transaction('offlineUrls', 'readwrite');
-        const store = transaction.objectStore('offlineUrls');
-        await store.delete(url.id);
-
-        syncedCount++;
+        if (response.status === 200 || response.status === 201) {
+          const db = await openIndexedDB();
+          const transaction = db.transaction('offlineUrls', 'readwrite');
+          const store = transaction.objectStore('offlineUrls');
+          await store.delete(url.id);
+          syncedCount++;
+        } else {
+          failedUrls.push(url.originalUrl);
+        }
       } catch (error) {
         console.error('Failed to sync URL:', url.originalUrl, error);
+        failedUrls.push(url.originalUrl);
       }
     }
 
     if (syncedCount > 0) {
       toast.success(`Successfully synced ${syncedCount} URLs`);
+    }
+
+    if (failedUrls.length > 0) {
+      toast.error(`Failed to sync ${failedUrls.length} URLs`);
     }
   };
 

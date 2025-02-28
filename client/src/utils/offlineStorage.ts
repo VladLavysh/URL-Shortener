@@ -49,7 +49,7 @@ export async function getOfflineUrls(): Promise<UrlItem[]> {
       const request = store.getAll();
 
       request.onsuccess = () => {
-        resolve(request.result as UrlItem[]);
+        resolve(Array.isArray(request.result) ? request.result : []);
       };
 
       request.onerror = () => {

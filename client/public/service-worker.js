@@ -1,5 +1,3 @@
-const URL_CACHE = 'url-shortener-urls-v1';
-
 // Only listen for sync events when connection is restored
 self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-new-urls') {
@@ -16,12 +14,13 @@ async function syncUrls() {
     const store = transaction.objectStore('offlineUrls');
     const offlineUrls = await store.getAll();
 
-    console.log(`Service worker: Found ${offlineUrls.length} offline URLs to sync`);
-
-    if (!offlineUrls || offlineUrls.length === 0) {
+    // Ensure offlineUrls is an array
+    if (!offlineUrls || !Array.isArray(offlineUrls) || offlineUrls.length === 0) {
       console.log('Service worker: No offline URLs to sync');
       return;
     }
+
+    console.log(`Service worker: Found ${offlineUrls.length} offline URLs to sync`);
 
     for (const urlData of offlineUrls) {
       try {
