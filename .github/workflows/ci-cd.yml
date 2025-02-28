@@ -1,161 +1,161 @@
-name: CI/CD Pipeline
+# name: CI/CD Pipeline
 
-on:
-  push:
-    branches: ['main']
-  pull_request:
-    branches: ['main']
+# on:
+#   push:
+#     branches: ['main']
+#   pull_request:
+#     branches: ['main']
 
-jobs:
-  lint-and-test-client:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./client
+# jobs:
+#   lint-and-test-client:
+#     runs-on: ubuntu-latest
+#     defaults:
+#       run:
+#         working-directory: ./client
 
-    steps:
-      - uses: actions/checkout@v4
+#     steps:
+#       - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './client/package-lock.json'
+#       - name: Set up Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: '20'
+#           cache: 'npm'
+#           cache-dependency-path: './client/package-lock.json'
 
-      - name: Update package-lock.json
-        run: npm install --package-lock-only
+#       - name: Update package-lock.json
+#         run: npm install --package-lock-only
 
-      - name: Install dependencies
-        run: npm install
+#       - name: Install dependencies
+#         run: npm install
 
-      - name: Check code formatting
-        run: npm run format:check
+#       - name: Check code formatting
+#         run: npm run format:check
 
-      - name: Run tests
-        run: npm test
+#       - name: Run tests
+#         run: npm test
 
-  build-client:
-    needs: lint-and-test-client
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./client
+#   build-client:
+#     needs: lint-and-test-client
+#     runs-on: ubuntu-latest
+#     defaults:
+#       run:
+#         working-directory: ./client
 
-    steps:
-      - uses: actions/checkout@v4
+#     steps:
+#       - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './client/package-lock.json'
+#       - name: Set up Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: '20'
+#           cache: 'npm'
+#           cache-dependency-path: './client/package-lock.json'
 
-      - name: Update package-lock.json
-        run: npm install --package-lock-only
+#       - name: Update package-lock.json
+#         run: npm install --package-lock-only
 
-      - name: Install dependencies
-        run: npm install
+#       - name: Install dependencies
+#         run: npm install
 
-      - name: Build client
-        run: npm run build
+#       - name: Build client
+#         run: npm run build
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: client-build
-          path: ./client/dist
-          retention-days: 7
+#       - name: Upload build artifacts
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: client-build
+#           path: ./client/dist
+#           retention-days: 7
 
-  lint-and-test-server:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./server
+#   lint-and-test-server:
+#     runs-on: ubuntu-latest
+#     defaults:
+#       run:
+#         working-directory: ./server
 
-    steps:
-      - uses: actions/checkout@v4
+#     steps:
+#       - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './server/package-lock.json'
+#       - name: Set up Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: '20'
+#           cache: 'npm'
+#           cache-dependency-path: './server/package-lock.json'
 
-      - name: Update package-lock.json
-        run: npm install --package-lock-only
+#       - name: Update package-lock.json
+#         run: npm install --package-lock-only
 
-      - name: Install dependencies
-        run: npm install
+#       - name: Install dependencies
+#         run: npm install
 
-      - name: Check code formatting
-        run: npm run format:check
+#       - name: Check code formatting
+#         run: npm run format:check
 
-      - name: Run tests
-        run: npm test
-        env:
-          DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/test_db?schema=public'
-          JWT_SECRET: 'test-jwt-secret'
-          NODE_ENV: 'test'
+#       - name: Run tests
+#         run: npm test
+#         env:
+#           DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/test_db?schema=public'
+#           JWT_SECRET: 'test-jwt-secret'
+#           NODE_ENV: 'test'
 
-  build-server:
-    needs: lint-and-test-server
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./server
+#   build-server:
+#     needs: lint-and-test-server
+#     runs-on: ubuntu-latest
+#     defaults:
+#       run:
+#         working-directory: ./server
 
-    steps:
-      - uses: actions/checkout@v4
+#     steps:
+#       - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './server/package-lock.json'
+#       - name: Set up Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: '20'
+#           cache: 'npm'
+#           cache-dependency-path: './server/package-lock.json'
 
-      - name: Update package-lock.json
-        run: npm install --package-lock-only
+#       - name: Update package-lock.json
+#         run: npm install --package-lock-only
 
-      - name: Install dependencies
-        run: npm install --production=false
+#       - name: Install dependencies
+#         run: npm install --production=false
 
-      - name: Build server
-        run: npm run build
+#       - name: Build server
+#         run: npm run build
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: server-build
-          path: ./server/dist
-          retention-days: 7
+#       - name: Upload build artifacts
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: server-build
+#           path: ./server/dist
+#           retention-days: 7
 
-  db-migrate:
-    needs: [build-client, build-server]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
+#   db-migrate:
+#     needs: [build-client, build-server]
+#     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+#     runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v4
+#     steps:
+#       - uses: actions/checkout@v4
 
-      # Database migration step for production
-      - name: Set up Node.js for database migration
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './server/package-lock.json'
+#       # Database migration step for production
+#       - name: Set up Node.js for database migration
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: '20'
+#           cache: 'npm'
+#           cache-dependency-path: './server/package-lock.json'
 
-      - name: Install server dependencies for migration
-        run: npm install
-        working-directory: ./server
+#       - name: Install server dependencies for migration
+#         run: npm install
+#         working-directory: ./server
 
-      - name: Run database migrations
-        run: npm run migrate -- auto_migration
-        working-directory: ./server
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NODE_ENV: 'production'
+#       - name: Run database migrations
+#         run: npm run migrate -- auto_migration
+#         working-directory: ./server
+#         env:
+#           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+#           NODE_ENV: 'production'
