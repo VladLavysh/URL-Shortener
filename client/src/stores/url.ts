@@ -88,7 +88,7 @@ export const useUrlStore = defineStore('url', () => {
       }
 
       currentPage.value = page;
-      hasMoreUrls.value = response.data.pagination.hasMore;
+      hasMoreUrls.value = response.data.pagination?.hasMore || false;
       totalUrls.value = response.data.pagination.total;
 
       return response.data;
@@ -133,7 +133,7 @@ export const useUrlStore = defineStore('url', () => {
         console.log('New URLs:', response.data.urls);
         urls.value = response.data.urls;
         currentPage.value = response.data.pagination.page;
-        hasMoreUrls.value = response.data.pagination.hasMore;
+        hasMoreUrls.value = response.data.pagination?.hasMore || false;
         totalUrls.value = response.data.pagination.total;
       }
 
@@ -166,7 +166,7 @@ export const useUrlStore = defineStore('url', () => {
       if (response.data.urls && response.data.pagination) {
         urls.value = response.data.urls;
         currentPage.value = response.data.pagination.page;
-        hasMoreUrls.value = response.data.pagination.hasMore;
+        hasMoreUrls.value = response.data.pagination?.hasMore || false;
         totalUrls.value = response.data.pagination.total;
       }
 
