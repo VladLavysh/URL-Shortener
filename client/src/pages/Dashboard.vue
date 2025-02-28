@@ -102,7 +102,7 @@ onMounted(() => {
       :transition="{ duration: 300, delay: 100 }"
     >
       <h2 class="text-xl font-semibold mb-4">
-        Your URLs <span class="text-sm text-gray-400">({{ urlStore.totalUrls }} total)</span>
+        Your URLs <span class="text-sm text-gray-400">({{ urlStore.totalUrls || 0 }} total)</span>
       </h2>
 
       <div class="space-y-4 max-h-[70vh] overflow-auto">
@@ -111,7 +111,7 @@ onMounted(() => {
           <p class="mt-4 text-gray-400">Loading URLs...</p>
         </div>
 
-        <div v-else-if="urlStore.urls.length === 0" class="bg-gray-800 rounded-lg p-8 text-center">
+        <div v-else-if="!urlStore.urls || urlStore.urls.length === 0" class="bg-gray-800 rounded-lg p-8 text-center">
           <p class="text-gray-400">You haven't created any URLs yet.</p>
           <p class="text-gray-500 mt-2">Enter a URL above to get started!</p>
         </div>

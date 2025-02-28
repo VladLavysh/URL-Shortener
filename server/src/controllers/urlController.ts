@@ -43,15 +43,9 @@ const getPaginatedUrls = async (userId: string, page: number = 1, limit: number 
 
   if (cachedData) {
     console.log(`Cache hit for ${cacheKey}`);
-    console.log('Cache data type:', typeof cachedData);
-    console.log('Cache data structure:', JSON.stringify(cachedData, null, 2));
 
-    // Check if the cached data has the expected structure
     if (cachedData.urls && Array.isArray(cachedData.urls) && cachedData.pagination) {
-      console.log('Cache data is valid, returning from cache');
       return cachedData;
-    } else {
-      console.log('Cache data is invalid, ignoring cache');
     }
   }
 
@@ -155,15 +149,12 @@ export const createShortUrl = async (req: Request, res: Response) => {
         console.log(`Deleted ${deletedCount} cache keys`);
       }
 
-      console.log('Getting updated paginated data for user:', userId);
       const paginationData = await getPaginatedUrls(userId as string);
-      console.log('Updated pagination data:', JSON.stringify(paginationData, null, 2));
 
       if (paginationData.urls && Array.isArray(paginationData.urls)) {
         const urlExists = paginationData.urls.some((u) => u.id === url.id);
 
         if (!urlExists && paginationData.urls.length > 0) {
-          console.log('Adding newly created URL to the response');
           paginationData.urls.unshift(newUrlObject);
 
           if (paginationData.pagination) {

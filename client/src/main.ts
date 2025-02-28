@@ -11,7 +11,7 @@ const pinia = createPinia();
 const app = createApp(App);
 
 const options: PluginOptions = {
-  timeout: 5000,
+  timeout: 3000,
   closeOnClick: true,
   pauseOnFocusLoss: true,
   pauseOnHover: true,

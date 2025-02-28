@@ -19,7 +19,6 @@ export async function saveUrlForOffline(originalUrl: string, userId: string) {
     };
 
     await store.add(urlData);
-    console.log('URL saved for offline use:', urlData);
 
     // Try to register for background sync
     try {
@@ -27,12 +26,7 @@ export async function saveUrlForOffline(originalUrl: string, userId: string) {
         const registration = await navigator.serviceWorker.ready;
         if ('sync' in registration) {
           await registration.sync.register('sync-new-urls');
-          console.log('Background sync registered for offline URLs');
-        } else {
-          console.log('Background Sync API not supported by this browser');
         }
-      } else {
-        console.log('Service Worker or SyncManager not supported by this browser');
       }
     } catch (syncError) {
       console.error('Error registering for background sync:', syncError);

@@ -32,9 +32,7 @@ export const useUrlStore = defineStore('url', () => {
     try {
       await syncOfflineUrls();
 
-      // Then refresh the URL list if we have a user ID
       if (urls.value.length > 0 && urls.value[0].userId) {
-        console.log('Refreshing URLs after coming back online');
         await getAllUrls(urls.value[0].userId, 1, true);
         toast.info('URL list refreshed');
       }
@@ -52,8 +50,6 @@ export const useUrlStore = defineStore('url', () => {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'SYNC_COMPLETE') {
-        console.log('Received sync completion message from service worker:', event.data);
-
         if (event.data.success) {
           toast.success('Successfully synced offline URLs');
 
@@ -82,14 +78,14 @@ export const useUrlStore = defineStore('url', () => {
       const response = await axios.get(`/url?userId=${userId}&page=${page}&limit=5`);
 
       if (reset || page === 1) {
-        urls.value = response.data.urls;
+        urls.value = response.data.urls || [];
       } else {
-        urls.value = [...urls.value, ...response.data.urls];
+        urls.value = [...urls.value, ...(response.data.urls || [])];
       }
 
       currentPage.value = page;
       hasMoreUrls.value = response.data.pagination?.hasMore || false;
-      totalUrls.value = response.data.pagination.total;
+      totalUrls.value = response.data.pagination?.total || 0;
 
       return response.data;
     } catch (error) {
@@ -114,6 +110,8 @@ export const useUrlStore = defineStore('url', () => {
 
   const createShortUrl = async (originalUrl: string, userId: string) => {
     try {
+      isLoading.value = true;
+
       if (!isOnline.value) {
         const offlineUrl = await saveUrlForOffline(originalUrl, userId);
 
@@ -124,17 +122,13 @@ export const useUrlStore = defineStore('url', () => {
         return { data: offlineUrl, message: 'URL saved offline' };
       }
 
-      console.log('Creating short URL:', originalUrl);
       const response = await axios.post('/url', { originalUrl, userId });
-      console.log('Server response:', response.data);
 
       if (response.data.urls && response.data.pagination) {
-        console.log('Updating store with server data');
-        console.log('New URLs:', response.data.urls);
         urls.value = response.data.urls;
         currentPage.value = response.data.pagination.page;
         hasMoreUrls.value = response.data.pagination?.hasMore || false;
-        totalUrls.value = response.data.pagination.total;
+        totalUrls.value = response.data.pagination?.total || 0;
       }
 
       toast.success(response.data.message || 'URL shortened successfully');
@@ -143,11 +137,15 @@ export const useUrlStore = defineStore('url', () => {
       console.error('Error creating short URL:', error);
       toast.error(error.response?.data?.message || 'Failed to create short URL');
       throw error;
+    } finally {
+      isLoading.value = false;
     }
   };
 
   const deleteUrl = async (id: string) => {
     try {
+      isLoading.value = true;
+
       if (!isOnline.value) {
         const isOfflineUrl = urls.value.find((url) => url.id === id && url.isOffline);
         if (isOfflineUrl) {
@@ -167,7 +165,7 @@ export const useUrlStore = defineStore('url', () => {
         urls.value = response.data.urls;
         currentPage.value = response.data.pagination.page;
         hasMoreUrls.value = response.data.pagination?.hasMore || false;
-        totalUrls.value = response.data.pagination.total;
+        totalUrls.value = response.data.pagination?.total || 0;
       }
 
       toast.success(response.data.message || 'URL deleted successfully');
@@ -176,11 +174,15 @@ export const useUrlStore = defineStore('url', () => {
       console.error('Error deleting URL:', error);
       toast.error(error.response?.data?.message || 'Failed to delete URL');
       throw error;
+    } finally {
+      isLoading.value = false;
     }
   };
 
   const deleteAllUrls = async (userId: string) => {
     try {
+      isLoading.value = true;
+
       if (!isOnline.value) {
         toast.error('Cannot delete all URLs while offline');
         throw new Error('Cannot delete all URLs while offline');
@@ -199,6 +201,8 @@ export const useUrlStore = defineStore('url', () => {
       console.error('Error deleting all URLs:', error);
       toast.error(error.response?.data?.message || 'Failed to delete all URLs');
       throw error;
+    } finally {
+      isLoading.value = false;
     }
   };
 
@@ -220,11 +224,9 @@ export const useUrlStore = defineStore('url', () => {
         const remainingOfflineUrls = await getOfflineUrls();
 
         if (remainingOfflineUrls.length > 0) {
-          console.log('Service worker sync may have failed, trying manual sync');
           await manualSyncOfflineUrls(remainingOfflineUrls);
         }
       } else {
-        console.log('Background Sync not supported, using manual sync');
         await manualSyncOfflineUrls(offlineData);
       }
     } catch (error) {
