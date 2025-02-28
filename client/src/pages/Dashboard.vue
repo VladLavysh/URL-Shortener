@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useUserStore } from '../stores/user';
 import { useUrlStore } from '../stores/url';
+import NetworkStatus from '../components/NetworkStatus.vue';
 
 const userStore = useUserStore();
 const urlStore = useUrlStore();
@@ -56,24 +57,30 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen p-6">
+  <div
+    class="min-h-screen p-6"
+    v-motion
+    :initial="{ opacity: 0, y: 100 }"
+    :enter="{ opacity: 1, y: 0 }"
+    :transition="{ duration: 500 }"
+  >
     <!-- Header -->
     <header class="max-w-5xl mx-auto flex justify-between items-center mb-12">
       <h1 class="text-2xl font-bold">URL Shortener</h1>
-      <div>
+      <div class="flex items-center">
+        <span
+          class="text-sm mr-3 px-2 py-1 rounded-md"
+          :class="urlStore.isOnline ? 'bg-green-600' : 'bg-red-600'"
+        >
+          {{ urlStore.isOnline ? 'Online' : 'Offline' }}
+        </span>
         <span class="text-lg text-gray-400 mr-5">{{ userStore.name }}</span>
         <button class="btn btn-secondary" @click="signOut">Sign Out</button>
       </div>
     </header>
 
     <!-- URL Creation Form -->
-    <div
-      class="max-w-5xl mx-auto bg-gray-800 rounded-xl p-6 mb-8"
-      v-motion
-      :initial="{ opacity: 0, y: 20 }"
-      :enter="{ opacity: 1, y: 0 }"
-      :transition="{ duration: 300 }"
-    >
+    <div class="max-w-5xl mx-auto bg-gray-800 rounded-xl p-6 mb-8">
       <form @submit.prevent="createShortUrl" class="flex gap-4">
         <input
           v-model="longUrl"
@@ -98,34 +105,50 @@ onMounted(() => {
         Your URLs <span class="text-sm text-gray-400">({{ urlStore.totalUrls }} total)</span>
       </h2>
 
-      <div class="space-y-4">
-        <h2 v-if="urlStore.urls.length === 0" class="text-xl font-semibold text-center text-gray-400">
-          No URLs found
-        </h2>
+      <div class="space-y-4 max-h-[70vh] overflow-auto">
+        <div v-if="urlStore.isLoading" class="text-center py-10">
+          <div class="spinner"></div>
+          <p class="mt-4 text-gray-400">Loading URLs...</p>
+        </div>
+
+        <div v-else-if="urlStore.urls.length === 0" class="bg-gray-800 rounded-lg p-8 text-center">
+          <p class="text-gray-400">You haven't created any URLs yet.</p>
+          <p class="text-gray-500 mt-2">Enter a URL above to get started!</p>
+        </div>
+
         <div
           v-for="url in urlStore.urls"
           :key="url.id"
           class="bg-gray-800 rounded-lg p-4"
           v-motion
-          :initial="{ opacity: 0, x: -20 }"
-          :enter="{ opacity: 1, x: 0 }"
-          :transition="{ duration: 300 }"
+          :initial="{ opacity: 0, y: 10 }"
+          :enter="{ opacity: 1, y: 0 }"
+          :transition="{ duration: 200 }"
         >
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex justify-between items-center gap-4">
             <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <h3 class="font-medium truncate">{{ url.originalUrl }}</h3>
-                <span class="text-xs text-gray-400 whitespace-nowrap">{{ url.createdAt }}</span>
-              </div>
-              <div class="flex items-center gap-2 mt-1">
-                <a class="text-blue-400 truncate" :href="url.shortUrl" target="_blank">{{ url.shortUrl }}</a>
-                <button
-                  @click="copyToClipboard(url.shortUrl)"
-                  class="text-gray-400 hover:text-white transition-colors !px-2 !py-1 ml-1"
+              <div class="flex items-center">
+                <a
+                  :href="url.shortUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-blue-400 hover:text-blue-300 truncate text-lg"
                 >
+                  {{ url.shortUrl }}
+                </a>
+                <span
+                  v-if="url.isOffline"
+                  class="ml-2 px-2 py-0.5 text-xs bg-yellow-700 text-yellow-200 rounded-md"
+                  >Offline</span
+                >
+              </div>
+              <div class="mb-2 flex flex-wrap gap-2 items-center text-sm text-gray-400">
+                <span>{{ url.id }},</span>
+                <span>{{ url.createdAt }},</span>
+                <span class="inline-flex items-center">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    class="h-4 w-4"
+                    class="h-4 w-4 mr-1"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -134,17 +157,32 @@ onMounted(() => {
                       stroke-linecap="round"
                       stroke-linejoin="round"
                       stroke-width="2"
-                      d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                     />
                   </svg>
-                </button>
+                  {{ url.clicks }} clicks
+                </span>
+              </div>
+              <h3 class="font-medium truncate text-gray-300">{{ url.originalUrl }}</h3>
+              <div v-if="url.isOffline" class="mt-2 text-yellow-400 text-sm">
+                Saved offline - will sync when online
               </div>
             </div>
-            <div class="flex items-center gap-4">
-              <div class="flex items-center gap-1 text-gray-400">
+            <div class="flex flex-col justify-between gap-2">
+              <button
+                @click="copyToClipboard(url.shortUrl)"
+                class="p-1 text-gray-400 hover:text-white"
+                title="Copy to clipboard"
+              >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  class="h-4 w-4"
+                  class="h-5 w-5"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -153,18 +191,15 @@ onMounted(() => {
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="2"
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                    d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
                   />
                 </svg>
-                <span>{{ url.clicks }}</span>
-              </div>
-              <button @click="deleteUrl(url.id)" class="text-red-400 hover:text-red-300 transition-colors">
+              </button>
+              <button
+                @click="deleteUrl(url.id)"
+                class="p-2 text-gray-400 hover:text-red-400"
+                title="Delete URL"
+              >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   class="h-5 w-5"
@@ -184,22 +219,15 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- Load More Button -->
-        <div v-if="urlStore.hasMoreUrls" class="flex justify-center mt-6">
-          <button @click="loadMoreUrls" class="btn btn-secondary px-6" :disabled="urlStore.isLoading">
-            <span v-if="urlStore.isLoading">Loading...</span>
-            <span v-else>Load More</span>
+        <div v-if="urlStore.hasMoreUrls" class="text-center mt-6">
+          <button @click="loadMoreUrls" class="btn btn-secondary">
+            {{ urlStore.isLoading ? 'Loading...' : 'Load More' }}
           </button>
-        </div>
-
-        <!-- Loading Indicator -->
-        <div v-if="urlStore.isLoading && !urlStore.urls.length" class="text-center py-8">
-          <div
-            class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"
-          ></div>
-          <p class="mt-2 text-gray-400">Loading URLs...</p>
         </div>
       </div>
     </div>
+
+    <!-- Network Status Component -->
+    <NetworkStatus />
   </div>
 </template>

@@ -4,7 +4,6 @@ import {
   getAllUserUrls,
   deleteUrlById,
   deleteAllUserUrls,
-  // getUrlStats,
   // getUserUrlStats,
   redirectToOriginalUrl,
 } from '../controllers/urlController';
@@ -75,31 +74,6 @@ router.get('/', verifyAuthToken, hasUserIdValidationRules(), validate, getAllUse
  *         description: No URLs found for the user
  */
 // router.get('/stats', verifyAuthToken, hasUserIdValidationRules(), validate, getUserUrlStats);
-
-/**
- * @swagger
- * /urls/{id}/stats (disabled):
- *   get:
- *     summary: Get click statistics for a specific URL
- *     tags: [URLs]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: integer
- *         required: true
- *         description: URL ID
- *     responses:
- *       200:
- *         description: URL statistics retrieved successfully
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: URL not found
- */
-// router.get('/:id/stats', verifyAuthToken, urlIdParamValidationRules(), validate, getUrlStats);
 
 /**
  * @swagger

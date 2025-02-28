@@ -34,7 +34,7 @@ app.use(cors({ ...corsOptions, origin: process.env.CLIENT_HOST }));
 
 // Rate Limiting
 app.use('/url', generalLimiter);
-app.use('/auth', authLimiter);
+// app.use('/auth', authLimiter);
 
 // Root level redirect route for short URLs
 app.get('/r/:shortCode', shortCodeParamValidationRules(), validate, redirectToOriginalUrl);
