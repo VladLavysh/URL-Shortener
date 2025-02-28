@@ -99,7 +99,7 @@ router.get('/me', verifyAuthToken, signInJWT);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/sign-in', signInValidationRules(), validate, signIn);
+router.post('/sign-in', signIn); // signInValidationRules(), validate,
 
 /**
  * @swagger
