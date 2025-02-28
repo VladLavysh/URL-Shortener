@@ -52,6 +52,10 @@ export const signIn = async (req: Request, res: Response) => {
   const accessToken = generateAccessToken(user.id, user.name);
   const refreshToken = generateRefreshToken(user.id, user.name);
 
+  await prisma.refreshToken.deleteMany({
+    where: { userId: user.id },
+  });
+
   await prisma.refreshToken.create({
     data: {
       token: refreshToken,
@@ -90,7 +94,7 @@ export const signUp = async (req: Request, res: Response) => {
     });
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = await bcrypt.hash(password, 12);
   const user = await prisma.user.create({
     data: {
       name,
@@ -100,6 +104,10 @@ export const signUp = async (req: Request, res: Response) => {
 
   const accessToken = generateAccessToken(user.id, user.name);
   const refreshToken = generateRefreshToken(user.id, user.name);
+
+  await prisma.refreshToken.deleteMany({
+    where: { userId: user.id },
+  });
 
   await prisma.refreshToken.create({
     data: {
@@ -152,6 +160,16 @@ export const refreshJWTToken = async (req: Request, res: Response) => {
 
   const verifiedToken = await verifyToken(refreshToken, 'refresh');
   if (!verifiedToken || 'decoded' in verifiedToken === false) {
+    await prisma.refreshToken.deleteMany({
+      where: { token: refreshToken },
+    });
+
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+
     return res.status(403).json({ message: 'Invalid or expired refresh token' });
   }
 
@@ -168,8 +186,8 @@ export const deleteAccount = async (req: Request, res: Response) => {
 
   try {
     await prisma.$transaction([
-      prisma.url.deleteMany({ where: { userId } }),
       prisma.refreshToken.deleteMany({ where: { userId } }),
+      prisma.url.deleteMany({ where: { userId } }),
       prisma.user.delete({ where: { id: userId } }),
     ]);
 
@@ -184,11 +202,3 @@ export const deleteAccount = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error deleting account' });
   }
 };
-
-// TODO: Create a Service Worker for cleaning expired tokens
-// const cleanExpiredTokens = async () => {
-//   await prisma.refreshToken.deleteMany({
-//     where: { expiresAt: { lt: new Date() } },
-//   });
-// };
-// setInterval(cleanExpiredTokens, 24 * 60 * 60 * 1000); // Run every 24h

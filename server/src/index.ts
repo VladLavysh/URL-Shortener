@@ -7,11 +7,15 @@ import cookieParser from 'cookie-parser';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsDoc from 'swagger-jsdoc';
 import { swaggerOptions, corsOptions } from './utils/variables';
+import { initCronJobs } from './services/cronService';
 import 'express-async-errors';
 
 import { generalLimiter, authLimiter } from './utils/rateLimiters';
 import authRouter from './routes/auth';
 import urlRouter from './routes/url';
+import { redirectToOriginalUrl } from './controllers/urlController';
+import { shortCodeParamValidationRules } from './middlewares/validateURL';
+import validate from './middlewares/validator';
 
 dotenv.config({
   path: process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development',
@@ -30,7 +34,10 @@ app.use(cors({ ...corsOptions, origin: process.env.CLIENT_HOST }));
 
 // Rate Limiting
 app.use('/url', generalLimiter);
-app.use('/auth', authLimiter);
+// app.use('/auth', authLimiter);
+
+// Root level redirect route for short URLs
+app.get('/r/:shortCode', shortCodeParamValidationRules(), validate, redirectToOriginalUrl);
 
 // Routes
 app.use('/auth', authRouter);
@@ -42,6 +49,8 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT} - ${process.env.NODE_ENV}`);
     });
+
+    initCronJobs();
   } catch (e) {
     console.log(e);
   }
