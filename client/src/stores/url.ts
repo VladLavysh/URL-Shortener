@@ -1,12 +1,11 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
-import { nanoid } from 'nanoid';
 import axios from '../utils/axios';
 import { useToast } from 'vue-toastification';
 import { saveUrlForOffline, getOfflineUrls } from '../utils/offlineStorage';
 
 export interface UrlItem {
-  id: string;
+  id: number | string; // Can be number from server or string for offline URLs
   originalUrl: string;
   shortUrl: string;
   clicks: number;
@@ -142,7 +141,7 @@ export const useUrlStore = defineStore('url', () => {
     }
   };
 
-  const deleteUrl = async (id: string) => {
+  const deleteUrl = async (id: string | number) => {
     try {
       isLoading.value = true;
 

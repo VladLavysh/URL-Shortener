@@ -6,10 +6,10 @@ export async function saveUrlForOffline(originalUrl: string, userId: string) {
     const db = await openDB();
     const transaction = db.transaction('offlineUrls', 'readwrite');
     const store = transaction.objectStore('offlineUrls');
-    const offlineUrlId = nanoid(6);
+    const offlineUrlId = nanoid(6); // Generate a string ID for offline URLs
 
     const urlData: UrlItem = {
-      id: offlineUrlId,
+      id: offlineUrlId, // Keep as string for offline URLs
       originalUrl,
       shortUrl: `${window.location.origin}/r/${offlineUrlId}`,
       clicks: 0,

@@ -28,7 +28,7 @@ const copyToClipboard = (url: string) => {
   toast.success('Copied to clipboard');
 };
 
-const deleteUrl = async (id: string) => {
+const deleteUrl = async (id: string | number) => {
   try {
     await urlStore.deleteUrl(id);
   } catch (error) {
@@ -111,7 +111,10 @@ onMounted(() => {
           <p class="mt-4 text-gray-400">Loading URLs...</p>
         </div>
 
-        <div v-else-if="!urlStore.urls || urlStore.urls.length === 0" class="bg-gray-800 rounded-lg p-8 text-center">
+        <div
+          v-else-if="!urlStore.urls || urlStore.urls.length === 0"
+          class="bg-gray-800 rounded-lg p-8 text-center"
+        >
           <p class="text-gray-400">You haven't created any URLs yet.</p>
           <p class="text-gray-500 mt-2">Enter a URL above to get started!</p>
         </div>

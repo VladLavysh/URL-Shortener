@@ -21,6 +21,8 @@ async function syncUrls() {
     }
 
     console.log(`Service worker: Found ${offlineUrls.length} offline URLs to sync`);
+    let successCount = 0;
+    let failCount = 0;
 
     for (const urlData of offlineUrls) {
       try {
@@ -42,11 +44,14 @@ async function syncUrls() {
           const deleteStore = deleteTransaction.objectStore('offlineUrls');
           await deleteStore.delete(urlData.id);
           console.log('Service worker: Removed synced URL from offline storage');
+          successCount++;
         } else {
           console.error('Service worker: Failed to sync URL, server returned:', response.status);
+          failCount++;
         }
       } catch (error) {
         console.error('Service worker: Failed to sync URL:', error);
+        failCount++;
       }
     }
 
@@ -56,6 +61,8 @@ async function syncUrls() {
         client.postMessage({
           type: 'SYNC_COMPLETE',
           success: true,
+          successCount,
+          failCount
         });
       });
     });

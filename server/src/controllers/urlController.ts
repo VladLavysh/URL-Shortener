@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Url, Prisma } from '@prisma/client';
 import { buildShortUrl, decodeShortUrl } from '../utils/urlGenerator';
 import { cacheService, createUrlCacheKey, createUserUrlsCacheKey } from '../services/cacheService';
 
@@ -13,7 +13,7 @@ interface UrlWithShortUrl {
   shortUrl: string;
   createdAt: string;
   clicks: number;
-  userId: string | null;
+  userId: string;
 }
 
 interface PaginationData {
@@ -67,7 +67,10 @@ const getPaginatedUrls = async (userId: string, page: number = 1, limit: number 
   });
 
   const urlsWithShortUrls = urls.map((url) => ({
-    ...url,
+    id: url.id,
+    originalUrl: url.originalUrl,
+    userId: url.userId,
+    clicks: url.clicks,
     createdAt: url.createdAt.toISOString().replace('T', ' ').split('.')[0],
     shortUrl: buildShortUrl(url.id, process.env.HOST),
   }));
@@ -115,20 +118,26 @@ export const createShortUrl = async (req: Request, res: Response) => {
       }
     }
 
+    const effectiveUserId = userId || 0;
+
+    // Create the URL with proper typing
     const url = await prisma.url.create({
       data: {
         originalUrl,
-        userId,
+        userId: effectiveUserId,
       },
     });
 
     const shortUrl = buildShortUrl(url.id, process.env.HOST);
 
-    const cacheKey = createUrlCacheKey(url.id);
+    const cacheKey = createUrlCacheKey(url.id.toString());
     cacheService.set(cacheKey, url.originalUrl, cacheDuration);
 
     const newUrlObject: UrlWithShortUrl = {
-      ...url,
+      id: url.id,
+      originalUrl: url.originalUrl,
+      userId: url.userId,
+      clicks: url.clicks,
       createdAt: url.createdAt.toISOString().replace('T', ' ').split('.')[0],
       shortUrl: shortUrl,
     };
@@ -180,9 +189,9 @@ export const redirectToOriginalUrl = async (req: Request, res: Response) => {
   const { shortCode } = req.params;
 
   try {
-    const cacheKey = createUrlCacheKey(shortCode);
-    const cachedUrl = cacheService.get<string>(cacheKey);
     const decodedUrlId = decodeShortUrl(shortCode);
+    const cacheKey = createUrlCacheKey(decodedUrlId.toString());
+    const cachedUrl = cacheService.get<string>(cacheKey);
 
     if (cachedUrl) {
       prisma.url
@@ -295,8 +304,9 @@ export const deleteUrlById = async (req: Request, res: Response) => {
   const { userId, page, limit } = req.query;
 
   try {
+    const numericId = parseInt(id, 10);
     const url = await prisma.url.findUnique({
-      where: { id: +id },
+      where: { id: numericId },
     });
 
     if (!url) {
@@ -308,44 +318,36 @@ export const deleteUrlById = async (req: Request, res: Response) => {
     }
 
     await prisma.url.delete({
-      where: { id: +id },
+      where: { id: numericId },
     });
 
-    const urlCacheKey = createUrlCacheKey(id);
-    cacheService.del(urlCacheKey);
+    // Clear cache for this URL
+    const cacheKey = createUrlCacheKey(numericId.toString());
+    cacheService.del(cacheKey);
 
-    if (url.userId) {
-      const userStatsCacheKey = `user:${url.userId}:stats`;
-      cacheService.del(userStatsCacheKey);
-
-      const userCachePattern = `user:${url.userId}:urls:`;
-      const keys = cacheService.keys().filter((key) => key.startsWith(userCachePattern));
-      if (keys.length > 0) {
-        cacheService.del(keys);
-      }
-    }
-
-    let response: UrlResponse = {
-      message: 'URL deleted successfully',
-      urls: [],
-      pagination: {
-        total: 0,
-        page: 1,
-        limit: 5,
-        hasMore: false,
-      },
-    };
-
+    // Clear user URLs cache
     if (userId) {
-      const paginationData = await getPaginatedUrls(
-        userId as string,
-        page ? parseInt(page as string) : 1,
-        limit ? parseInt(limit as string) : 5
-      );
-      response = { ...response, ...paginationData };
+      const userCachePattern = `user:${userId}:urls:`;
+      const keys = cacheService.keys().filter((key) => key.startsWith(userCachePattern));
+      console.log(`Found ${keys.length} cache keys to invalidate:`, keys);
+
+      if (keys.length > 0) {
+        const deletedCount = cacheService.del(keys);
+        console.log(`Deleted ${deletedCount} cache keys`);
+      }
+
+      // Get updated URLs
+      const pageNum = page ? parseInt(page as string) : 1;
+      const limitNum = limit ? parseInt(limit as string) : 5;
+      const paginationData = await getPaginatedUrls(userId as string, pageNum, limitNum);
+
+      return res.json({
+        message: 'URL deleted successfully',
+        ...paginationData,
+      });
     }
 
-    res.json(response);
+    res.json({ message: 'URL deleted successfully' });
   } catch (error) {
     console.error('Error deleting URL:', error);
     res.status(500).json({ message: 'Error deleting URL' });
@@ -358,22 +360,34 @@ export const deleteUrlById = async (req: Request, res: Response) => {
 export const deleteAllUserUrls = async (req: Request, res: Response) => {
   const { userId } = req.query;
 
+  if (!userId) {
+    return res.status(400).json({ message: 'User ID is required' });
+  }
+
   try {
-    if (!userId) {
-      return res.status(400).json({ message: 'User ID is required' });
-    }
+    const urls = await prisma.url.findMany({
+      where: { userId: userId as string },
+      select: { id: true },
+    });
 
     await prisma.url.deleteMany({
       where: { userId: userId as string },
     });
 
-    const userStatsCacheKey = `user:${userId}:stats`;
-    cacheService.del(userStatsCacheKey);
+    // Clear cache for all deleted URLs
+    for (const url of urls) {
+      const cacheKey = createUrlCacheKey(url.id.toString());
+      cacheService.del(cacheKey);
+    }
 
-    const userCachePattern = `user:${userId}:urls:`;
+    // Clear user URLs cache
+    const userCachePattern = `user:${userId}:`;
     const keys = cacheService.keys().filter((key) => key.startsWith(userCachePattern));
+    console.log(`Found ${keys.length} cache keys to invalidate:`, keys);
+
     if (keys.length > 0) {
-      cacheService.del(keys);
+      const deletedCount = cacheService.del(keys);
+      console.log(`Deleted ${deletedCount} cache keys`);
     }
 
     res.json({ message: 'All URLs deleted successfully' });
