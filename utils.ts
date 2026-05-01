@@ -24,7 +24,7 @@ export class MemoryStorage implements StorageInterface {
   async set(id: number, url: string, ttl?: number): Promise<void> {
     this.storage.set(id, url);
     if (ttl) {
-      setTimeout(() => this.storage.delete(id), ttl * 1000);
+      setTimeout(() => this.storage.delete(id), ttl);
     }
   }
 
