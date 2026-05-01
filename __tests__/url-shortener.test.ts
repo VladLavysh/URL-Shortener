@@ -3,45 +3,47 @@ import { encodeId, decodeShortUrl, buildShortUrl } from '../utils';
 
 describe('URL Shortener', () => {
   describe('createShortUrl', () => {
-    it('should create a short URL with default domain', () => {
+    it('should create a short URL with default domain', async () => {
       const longUrl = 'https://example.com/very/long/path';
-      const shortUrl = createShortUrl(longUrl, 'short.url');
+      const shortUrl = await createShortUrl(longUrl, 'short.url');
       
       expect(shortUrl).toContain('short.url/r/');
       expect(shortUrl.startsWith('short.url/r/')).toBeTruthy();
     });
 
-    it('should create a short URL with custom domain', () => {
+    it('should create a short URL with custom domain', async () => {
       const longUrl = 'https://example.com/very/long/path';
       const domain = 'custom.domain';
-      const shortUrl = createShortUrl(longUrl, domain);
+      const shortUrl = await createShortUrl(longUrl, domain);
       
       expect(shortUrl).toContain(`${domain}/r/`);
       expect(shortUrl.startsWith(`${domain}/r/`)).toBeTruthy();
     });
 
-    it('should create the same short URL for the same long URL', () => {
+    it('should create the same short URL for the same long URL', async () => {
       const longUrl = 'https://example.com/very/long/path';
       const domain = 'test.domain';
       
-      const shortUrl1 = createShortUrl(longUrl, domain);
-      const shortUrl2 = createShortUrl(longUrl, domain);
+      const shortUrl1 = await createShortUrl(longUrl, domain);
+      const shortUrl2 = await createShortUrl(longUrl, domain);
       
+      // With collision detection, the same URL should produce the same hash
+      // The collision detection only triggers when different URLs produce the same hash
       expect(shortUrl1).toEqual(shortUrl2);
     });
 
-    it('should create different short URLs for different long URLs', () => {
+    it('should create different short URLs for different long URLs', async () => {
       const longUrl1 = 'https://example.com/path1';
       const longUrl2 = 'https://example.com/path2';
       const domain = 'test.domain';
       
-      const shortUrl1 = createShortUrl(longUrl1, domain);
-      const shortUrl2 = createShortUrl(longUrl2, domain);
+      const shortUrl1 = await createShortUrl(longUrl1, domain);
+      const shortUrl2 = await createShortUrl(longUrl2, domain);
       
       expect(shortUrl1).not.toEqual(shortUrl2);
     });
     
-    it('should create a short URL with custom options', () => {
+    it('should create a short URL with custom options', async () => {
       const longUrl = 'https://example.com/very/long/path';
       const domain = 'test.domain';
       const options = {
@@ -50,26 +52,32 @@ describe('URL Shortener', () => {
         redirectPathSegment: 'goto'
       };
       
-      const shortUrl = createShortUrl(longUrl, domain, options);
+      const shortUrl = await createShortUrl(longUrl, domain, options);
       
       expect(shortUrl).toContain('https://');
       expect(shortUrl).toContain('/goto/');
     });
+
+    it('should throw error for invalid URL', async () => {
+      const invalidUrl = 'not-a-valid-url';
+      
+      await expect(createShortUrl(invalidUrl, 'test.domain')).rejects.toThrow('Invalid URL provided');
+    });
   });
 
   describe('decodeUrl', () => {
-    it('should decode a short URL back to its original URL', () => {
+    it('should decode a short URL back to its original URL', async () => {
       const longUrl = 'https://example.com/very/long/path';
-      const shortUrl = createShortUrl(longUrl, 'test.domain');
-      const decodedUrl = decodeUrl(shortUrl);
+      const shortUrl = await createShortUrl(longUrl, 'test.domain');
+      const decodedUrl = await decodeUrl(shortUrl);
       
       expect(decodedUrl).toBe(longUrl);
     });
 
-    it('should return undefined for unknown short URLs', () => {
+    it('should return undefined for unknown short URLs', async () => {
       // Use a valid format but a code that doesn't exist in our storage
       const unknownShortUrl = 'short.url/r/ABC123';
-      const decodedUrl = decodeUrl(unknownShortUrl);
+      const decodedUrl = await decodeUrl(unknownShortUrl);
       
       expect(decodedUrl).toBeUndefined();
     });

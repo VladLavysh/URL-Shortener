@@ -6,14 +6,16 @@ A simple and lightweight URL shortening library for Node.js. This package provid
 
 - [Installation](#installation)
 - [Usage](#usage)
+  - [Basic Usage](#basic-usage)
   - [Creating a Short URL](#creating-a-short-url)
   - [Customization Options](#customization-options)
   - [Using Different Hash Algorithms](#using-different-hash-algorithms)
   - [Decoding a Short URL](#decoding-a-short-url)
 - [Advanced Usage](#advanced-usage)
-  - [Storage and Persistence](#storage-and-persistence)
-  - [TTL (Time to Live)](#ttl-time-to-live)
   - [Customizing URL Structure](#customizing-url-structure)
+  - [Using Redis Storage](#using-redis-storage)
+  - [URL Expiration (TTL)](#url-expiration-ttl)
+  - [Collision Handling](#collision-handling)
 - [How It Works](#how-it-works)
 - [API Reference](#api-reference)
 - [License](#license)
@@ -252,6 +254,31 @@ Storage class for Redis integration. Expects a client compatible with `ioredis`.
 ### `MemoryStorage()`
 
 The default in-memory storage implementation.
+
+### `isValidUrl(url: string): boolean`
+
+Validates if a string is a properly formatted URL.
+
+- `url`: The URL string to validate.
+- **Returns**: True if the URL is valid, false otherwise.
+
+## Production Considerations
+
+### Storage Backends
+
+- **Memory Storage**: Fast but non-persistent. Data is lost when the application restarts.
+- **Redis Storage**: Persistent, fast, and supports TTL. Recommended for production.
+
+### Collision Handling
+
+The library automatically handles hash collisions by:
+1. Detecting when a hash already exists for a different URL
+2. Re-hashing with an offset (adding attempt number to the input)
+3. Retrying up to `maxRetries` times (default: 10)
+
+### URL Validation
+
+All URLs are validated before processing. Invalid URLs will throw an error.
 
 ## License
 

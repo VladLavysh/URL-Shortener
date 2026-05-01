@@ -66,26 +66,52 @@ export async function createShortUrl(
   let attempts = 0;
   let positiveHash: number;
 
-  do {
-    if (opts.hashAlgorithm === "custom" && opts.customHashFn) {
-      hash = opts.customHashFn(longUrl + attempts);
-    } else if (opts.hashAlgorithm === "sdbm") {
-      hash = 0;
-      const input = longUrl + attempts;
-      for (let i = 0; i < input.length; i++) {
-        const char = input.charCodeAt(i);
-        hash = char + (hash << 6) + (hash << 16) - hash;
-      }
-    } else {
-      hash = 5381;
-      const input = longUrl + attempts;
-      for (let i = 0; i < input.length; i++) {
-        const char = input.charCodeAt(i);
-        hash = (hash << 5) + hash + char;
-      }
+  if (opts.hashAlgorithm === "custom" && opts.customHashFn) {
+    hash = opts.customHashFn(longUrl);
+  } else if (opts.hashAlgorithm === "sdbm") {
+    hash = 0;
+    for (let i = 0; i < longUrl.length; i++) {
+      const char = longUrl.charCodeAt(i);
+      hash = char + (hash << 6) + (hash << 16) - hash;
     }
+  } else {
+    hash = 5381;
+    for (let i = 0; i < longUrl.length; i++) {
+      const char = longUrl.charCodeAt(i);
+      hash = (hash << 5) + hash + char;
+    }
+  }
 
-    positiveHash = Math.abs(hash);
+  positiveHash = Math.abs(hash);
+
+  if (await hasUrlMapping(positiveHash, storage)) {
+    const existingUrl = await getOriginalUrl(positiveHash, storage);
+    if (existingUrl === longUrl) {
+      return buildShortUrl(positiveHash, opts);
+    }
+  }
+
+  do {
+    if (attempts > 0) {
+      if (opts.hashAlgorithm === "custom" && opts.customHashFn) {
+        hash = opts.customHashFn(longUrl + attempts);
+      } else if (opts.hashAlgorithm === "sdbm") {
+        hash = 0;
+        const input = longUrl + attempts;
+        for (let i = 0; i < input.length; i++) {
+          const char = input.charCodeAt(i);
+          hash = char + (hash << 6) + (hash << 16) - hash;
+        }
+      } else {
+        hash = 5381;
+        const input = longUrl + attempts;
+        for (let i = 0; i < input.length; i++) {
+          const char = input.charCodeAt(i);
+          hash = (hash << 5) + hash + char;
+        }
+      }
+      positiveHash = Math.abs(hash);
+    }
     attempts++;
   } while (await hasUrlMapping(positiveHash, storage) && attempts < maxRetries);
 
