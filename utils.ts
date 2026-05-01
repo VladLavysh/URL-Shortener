@@ -3,6 +3,79 @@ const CHARACTERS =
 const BASE = CHARACTERS.length;
 
 /**
+ * Storage interface for URL mappings
+ */
+export interface StorageInterface {
+  get(id: number): Promise<string | undefined>;
+  set(id: number, url: string, ttl?: number): Promise<void>;
+  has(id: number): Promise<boolean>;
+}
+
+/**
+ * In-memory storage implementation
+ */
+export class MemoryStorage implements StorageInterface {
+  private storage: Map<number, string> = new Map();
+
+  async get(id: number): Promise<string | undefined> {
+    return this.storage.get(id);
+  }
+
+  async set(id: number, url: string, ttl?: number): Promise<void> {
+    this.storage.set(id, url);
+    if (ttl) {
+      setTimeout(() => this.storage.delete(id), ttl * 1000);
+    }
+  }
+
+  async has(id: number): Promise<boolean> {
+    return this.storage.has(id);
+  }
+}
+
+/**
+ * Redis storage implementation (optional)
+ */
+export class RedisStorage implements StorageInterface {
+  private client: any;
+
+  constructor(client: any) {
+    this.client = client;
+  }
+
+  async get(id: number): Promise<string | undefined> {
+    const result = await this.client.get(`url:${id}`);
+    return result || undefined;
+  }
+
+  async set(id: number, url: string, ttl?: number): Promise<void> {
+    const key = `url:${id}`;
+    if (ttl) {
+      await this.client.setex(key, ttl, url);
+    } else {
+      await this.client.set(key, url);
+    }
+  }
+
+  async has(id: number): Promise<boolean> {
+    const exists = await this.client.exists(`url:${id}`);
+    return exists === 1;
+  }
+}
+
+/**
+ * Validates if a string is a proper URL
+ */
+export function isValidUrl(url: string): boolean {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Generates a short URL code from a numeric ID using base62 encoding
  * @param id - The numeric ID to encode
  * @returns The base62 encoded string
@@ -61,27 +134,50 @@ export const DEFAULT_SHORT_URL_OPTIONS: ShortUrlOptions = {
 };
 
 /**
- * In-memory storage for URL mappings
- * Maps numeric IDs to their original URLs
+ * Default storage instance (in-memory)
  */
-export const urlStorage: Map<number, string> = new Map();
+export const defaultStorage = new MemoryStorage();
 
 /**
- * Stores a URL mapping
+ * Stores a URL mapping using the specified storage
  * @param id - The numeric ID
  * @param originalUrl - The original URL
+ * @param storage - Storage instance to use
+ * @param ttl - Time to live in seconds (optional)
  */
-export function storeUrlMapping(id: number, originalUrl: string): void {
-  urlStorage.set(id, originalUrl);
+export async function storeUrlMapping(
+  id: number, 
+  originalUrl: string, 
+  storage: StorageInterface = defaultStorage,
+  ttl?: number
+): Promise<void> {
+  await storage.set(id, originalUrl, ttl);
 }
 
 /**
  * Retrieves the original URL for a given ID
  * @param id - The numeric ID
+ * @param storage - Storage instance to use
  * @returns The original URL if found, undefined otherwise
  */
-export function getOriginalUrl(id: number): string | undefined {
-  return urlStorage.get(id);
+export async function getOriginalUrl(
+  id: number, 
+  storage: StorageInterface = defaultStorage
+): Promise<string | undefined> {
+  return await storage.get(id);
+}
+
+/**
+ * Checks if a URL mapping exists
+ * @param id - The numeric ID
+ * @param storage - Storage instance to use
+ * @returns True if the mapping exists, false otherwise
+ */
+export async function hasUrlMapping(
+  id: number, 
+  storage: StorageInterface = defaultStorage
+): Promise<boolean> {
+  return await storage.has(id);
 }
 
 /**

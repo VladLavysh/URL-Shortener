@@ -1,6 +1,6 @@
 {
   "name": "@unitio-code/url-shortener",
-  "version": "1.1.5",
+  "version": "2.0.0",
   "description": "A simple URL shortening library",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -33,6 +33,17 @@
     "rimraf": "^5.0.10",
     "ts-jest": "^29.1.0",
     "typescript": "^5.0.4"
+  },
+  "optionalDependencies": {
+    "ioredis": "^5.3.2"
+  },
+  "peerDependencies": {
+    "ioredis": "^5.3.2"
+  },
+  "peerDependenciesMeta": {
+    "ioredis": {
+      "optional": true
+    }
   },
   "files": [
     "dist/**/*"

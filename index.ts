@@ -6,14 +6,26 @@ import {
   DEFAULT_SHORT_URL_OPTIONS,
   storeUrlMapping,
   getOriginalUrl,
+  hasUrlMapping,
+  isValidUrl,
+  StorageInterface,
+  defaultStorage,
 } from "./utils";
 
 /**
  * Options for creating a short URL
+ * @property hashAlgorithm - Hash algorithm to use (default: 'djb2')
+ * @property customHashFn - Custom hash function
+ * @property storage - Storage instance to use (default: MemoryStorage)
+ * @property ttl - Time to live in seconds
+ * @property maxRetries - Maximum retries for collision handling (default: 10)
  */
 export interface CreateShortUrlOptions extends ShortUrlOptions {
   hashAlgorithm?: "djb2" | "sdbm" | "custom";
   customHashFn?: (url: string) => number;
+  storage?: StorageInterface;
+  ttl?: number;
+  maxRetries?: number;
 }
 
 /**
@@ -22,6 +34,7 @@ export interface CreateShortUrlOptions extends ShortUrlOptions {
 const DEFAULT_CREATE_OPTIONS: CreateShortUrlOptions = {
   ...DEFAULT_SHORT_URL_OPTIONS,
   hashAlgorithm: "djb2",
+  maxRetries: 10,
 };
 
 /**
@@ -31,38 +44,56 @@ const DEFAULT_CREATE_OPTIONS: CreateShortUrlOptions = {
  * @param options - Optional configuration options
  * @returns The shortened URL
  */
-export function createShortUrl(
+export async function createShortUrl(
   longUrl: string,
   domain: string,
   options?: Partial<Omit<CreateShortUrlOptions, "domain">>
-): string {
+): Promise<string> {
+  if (!isValidUrl(longUrl)) {
+    throw new Error("Invalid URL provided");
+  }
+
   const opts: CreateShortUrlOptions = {
     ...DEFAULT_CREATE_OPTIONS,
     domain,
     ...options,
   };
 
-  let hash: number;
+  const storage = opts.storage || defaultStorage;
+  const maxRetries = opts.maxRetries || 10;
 
-  if (opts.hashAlgorithm === "custom" && opts.customHashFn) {
-    hash = opts.customHashFn(longUrl);
-  } else if (opts.hashAlgorithm === "sdbm") {
-    hash = 0;
-    for (let i = 0; i < longUrl.length; i++) {
-      const char = longUrl.charCodeAt(i);
-      hash = char + (hash << 6) + (hash << 16) - hash;
+  let hash: number;
+  let attempts = 0;
+  let positiveHash: number;
+
+  do {
+    if (opts.hashAlgorithm === "custom" && opts.customHashFn) {
+      hash = opts.customHashFn(longUrl + attempts);
+    } else if (opts.hashAlgorithm === "sdbm") {
+      hash = 0;
+      const input = longUrl + attempts;
+      for (let i = 0; i < input.length; i++) {
+        const char = input.charCodeAt(i);
+        hash = char + (hash << 6) + (hash << 16) - hash;
+      }
+    } else {
+      hash = 5381;
+      const input = longUrl + attempts;
+      for (let i = 0; i < input.length; i++) {
+        const char = input.charCodeAt(i);
+        hash = (hash << 5) + hash + char;
+      }
     }
-  } else {
-    hash = 5381;
-    for (let i = 0; i < longUrl.length; i++) {
-      const char = longUrl.charCodeAt(i);
-      hash = (hash << 5) + hash + char;
-    }
+
+    positiveHash = Math.abs(hash);
+    attempts++;
+  } while (await hasUrlMapping(positiveHash, storage) && attempts < maxRetries);
+
+  if (attempts >= maxRetries) {
+    throw new Error("Failed to generate unique short URL after maximum retries");
   }
 
-  const positiveHash = Math.abs(hash);
-
-  storeUrlMapping(positiveHash, longUrl);
+  await storeUrlMapping(positiveHash, longUrl, storage, opts.ttl);
 
   return buildShortUrl(positiveHash, opts);
 }
@@ -82,14 +113,18 @@ function extractShortCode(shortUrl: string): string {
 /**
  * Decodes a short URL back to its original URL
  * @param shortUrl - The shortened URL to decode
+ * @param storage - Storage instance to use (optional)
  * @returns The original URL if found, or undefined if not found
  */
-export function decodeUrl(shortUrl: string): string | undefined {
+export async function decodeUrl(
+  shortUrl: string,
+  storage?: StorageInterface
+): Promise<string | undefined> {
   try {
     const shortCode = extractShortCode(shortUrl);
     const id = decodeShortUrl(shortCode);
 
-    return getOriginalUrl(id);
+    return await getOriginalUrl(id, storage || defaultStorage);
   } catch (error) {
     return undefined;
   }
